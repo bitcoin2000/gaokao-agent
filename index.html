@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>四川高考志愿 Agent</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;min-height:100vh;padding:20px}
+.container{max-width:720px;margin:0 auto}
+.card{background:#fff;border-radius:14px;padding:24px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+h1{font-size:22px;color:#1a1a2e}
+.sub{color:#888;font-size:13px;margin-bottom:16px;line-height:1.5}
+label{display:block;font-weight:600;color:#444;font-size:13px;margin-bottom:4px}
+select,input{width:100%;padding:10px 12px;border:2px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:12px;outline:none;background:#fff}
+select:focus,input:focus{border-color:#667eea}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;-webkit-appearance:none}
+.btn:hover{opacity:.9}
+.rank-badge{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:20px;border-radius:12px;text-align:center;margin-bottom:16px}
+.rank-num{font-size:36px;font-weight:700}
+.rank-label{font-size:14px;opacity:.9}
+.sec-title{font-size:15px;font-weight:600;color:#333;margin:16px 0 8px;display:flex;justify-content:space-between;align-items:center}
+.item{background:#f8f9ff;border-radius:10px;padding:12px 14px;margin-bottom:6px;border-left:4px solid #667eea}
+.item .n{font-weight:600;font-size:14px;color:#222}
+.item .m{color:#888;font-size:12px;margin-top:2px}
+.b-冲{border-color:#ff6b6b}
+.b-稳{border-color:#ffd93d}
+.b-保{border-color:#6bcb77}
+.lvl{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;margin-left:4px}
+.lvl-985{background:#ffebee;color:#c62828}
+.lvl-211{background:#fff8e1;color:#f57f17}
+.lvl-{background:#e8f5e9;color:#2e7d32}
+.strategy{padding:12px;background:#fff8e1;border-radius:8px;font-size:13px;color:#666;line-height:1.7}
+.hide{display:none}
+.loading{text-align:center;padding:30px}
+.spinner{display:inline-block;width:28px;height:28px;border:3px solid #e0e0e0;border-top-color:#667eea;border-radius:50%;animation:s .8s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.tag{display:inline-block;background:#e8ecff;color:#667eea;padding:1px 7px;border-radius:4px;font-size:11px;margin:3px 2px 0 0}
+.footer{text-align:center;color:#aaa;font-size:12px;padding:20px 0}
+.data-source{font-size:12px;color:#999;margin-top:8px;text-align:center;border-top:1px solid #eee;padding-top:12px;line-height:1.6}
+@media(max-width:600px){.card{padding:16px}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+<h1>🎓 四川高考志愿 Agent</h1>
+<div class="sub">基于四川省教育考试院2024年官方录取数据<br>物理类106所 · 历史类87所 · 覆盖全国在川招生高校</div>
+<label>高考分数</label>
+<input type="number" id="score" placeholder="输入分数，如 630" min="0" max="750" autocomplete="off">
+<label>科类</label>
+<select id="subj"><option value="物理">物理类（理科）</option><option value="历史">历史类（文科）</option></select>
+<label>兴趣方向（可选，不选则推荐热门专业）</label>
+<select id="interest">
+<option value="">不限定</option>
+<option value="计算机">计算机/编程/AI</option>
+<option value="医学">医学/生物/健康</option>
+<option value="经济">金融/经济/会计</option>
+<option value="法学">法学/政法</option>
+<option value="师范">师范/教育</option>
+<option value="工科">工程/机械/自动化</option>
+<option value="电子">电子/通信/微电子</option>
+<option value="人文">外语/新闻/中文</option>
+<option value="理学">数学/物理/理学</option>
+</select>
+<button class="btn" onclick="go()">💡 生成志愿方案</button>
+<div class="data-source">数据来源：四川省教育考试院2024一分一段表 + 各批次调档线</div>
+</div>
+
+<div id="loading" class="card hide"><div class="loading"><div class="spinner"></div><p style="margin-top:10px;color:#888">计算中 请稍候...</p></div></div>
+<div id="result"></div>
+<div class="footer">本工具仅供参考，正式填报以《招生考试报》为准</div>
+</div>
+
+<script src="gaokao-data.js"></script>
+<script>
+function go(){
+  const score = parseInt(document.getElementById('score').value);
+  const subj = document.getElementById('subj').value;
+  const interest = document.getElementById('interest').value;
+  if(!score||score<0||score>750){alert('请输入0-750的分数');return}
+  
+  document.getElementById('loading').classList.remove('hide');
+  document.getElementById('result').innerHTML = '';
+  
+  setTimeout(() => {
+    try {
+      const d = GAOKAO.recommend(score, subj, interest);
+      render(d);
+    } catch(e) {
+      document.getElementById('result').innerHTML = `<div class="card"><p style="color:#c00">出错了: ${e.message}</p></div>`;
+    }
+    document.getElementById('loading').classList.add('hide');
+  }, 100);
+}
+
+function render(d) {
+  let html = `<div class="card rank-badge"><div class="rank-num">${d.rank.toLocaleString()}</div><div class="rank-label">四川${d.subject}类 · ${d.score}分 · 预估省排名</div><div style="font-size:12px;margin-top:4px;opacity:.8">2024一本线${d.line}分（${d.lineRank.toLocaleString()}名） | 二本线${d.subject==='物理'?'459':'458'}分</div></div><div class="card">`;
+  
+  const cats = [{k:'冲',i:'🚀',t:'冲刺院校（选1-2所，冲一冲）'},{k:'稳',i:'✅',t:'稳妥院校（选2-3所，大概率录取）'},{k:'保',i:'🔒',t:'保底院校（选1-2所，非常稳）'}];
+  for(const c of cats){
+    const items = d.categories[c.k];
+    if(!items||!items.length) continue;
+    html += `<div class="sec-title">${c.i} ${c.t}<span style="color:#999;font-size:13px">共${items.length}所</span></div>`;
+    for(const s of items.slice(0,5)){
+      const g = s.gap>0?'+'+s.gap:''+s.gap;
+      const lc = s.level.includes('985')?'lvl-985':s.level.includes('211')?'lvl-211':'lvl-';
+      html += `<div class="item b-${c.k}"><div class="n">${s.name}<span class="lvl ${lc}">${s.level}</span></div><div class="m">📍${s.city} · 2024录取位次${s.rank2024.toLocaleString()} · 位次差${g} (${s.gapPct}%)<br><span style="color:#667eea">${s.tag}</span></div></div>`;
+    }
+  }
+  
+  //专业推荐
+  html += `<div class="sec-title">📚 推荐报考专业</div><div class="strategy">`;
+  for(const m of d.majors){
+    const star = '⭐'.repeat(m.s);
+    html += `<div style="padding:4px 0"><b>${m.n}</b> ${star} <span style="color:#888;font-size:12px">${m.c}</span></div>`;
+  }
+  html += `</div>`;
+  
+  //策略
+  html += `<div class="sec-title">📌 填报策略</div><div class="strategy">`;
+  html += `建议总填报 6-9 所：冲 ${Math.min(d.categories['冲'].length,2)} 所 + 稳 ${Math.min(d.categories['稳'].length,3)} 所 + 保 ${Math.min(d.categories['保'].length,2)} 所<br>`;
+  if(d.rank < d.lineRank){
+    html += `✅ 你的分数高于一本线，可以按一本+二本兼顾填报<br>`;
+  } else {
+    const gap = d.rank - d.lineRank;
+    html += `你的位次距一本线差 ${gap} 名，重点关注二本批次优质院校<br>`;
+  }
+  html += `📌 最终决定请以《招生考试报》和各校招生章程为准</div></div>`;
+  
+  document.getElementById('result').innerHTML = html;
+  document.getElementById('result').scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+</html>
